@@ -17,7 +17,11 @@
     },
     {
         "ParameterKey": "BrokerNodeStorage",
-        "ParameterValue": "0"
+        "ParameterValue": "512"
+    },
+    {
+        "ParameterKey": "BrokerNodeStorageType",
+        "ParameterValue": "st1"
     },
     {
         "ParameterKey": "ClusterName",
@@ -25,11 +29,7 @@
     },
     {
         "ParameterKey": "ConfluentEdition",
-        "ParameterValue": "Confluent Enterprise"
-    },
-    {
-        "ParameterKey": "ConfluentVersion",
-        "ParameterValue": "3.2.0"
+        "ParameterValue": "Confluent Open Source"
     },
     {
         "ParameterKey": "KeyPairName",
