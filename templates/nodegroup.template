@@ -2,6 +2,33 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "CloudFormation sub-template for Auto-scaling group deployment",
     "Parameters": {
+        "DatadogApiKey": {
+            "Description": "API Key required to authenticate with Datadog.",
+            "Type": "String"
+        },
+        "ConsulVersion": {
+            "Default": "0.8.1",
+            "Description": "Version of Consul to deploy",
+            "Type": "String"
+        },
+        "ConsulServerStack": {
+            "Description": "The ARN ID for the Cloudformation stack that created the consul servers",
+            "Type": "String"
+        },
+        "ConsulQSS3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "ConsulQSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "hashicorp/consul/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        },
         "AssignPublicIP": {
             "AllowedValues": [
                 "true",
@@ -79,7 +106,7 @@
                 "Amazon-Linux-HVM"
             ],
             "ConstraintDescription": "Supported versions of Linux AMIs for Confluent deployments",
-            "Default": "CentOS-7-HVM",
+            "Default": "Ubuntu-Server-16.04-LTS-HVM",
             "Description": "Operating system AMI for cluster instances",
             "Type": "String"
         },
@@ -90,6 +117,7 @@
         },
         "NodeInstanceType": {
             "AllowedValues": [
+                "t2.small",
                 "t2.medium",
                 "t2.large",
                 "m3.medium",
@@ -356,13 +384,102 @@
                         "buckets": [
                             {
                                 "Ref": "QSS3BucketName"
+                            },
+                            {
+                                "Ref": "ConsulQSS3BucketName"
                             }
                         ]
                     }
                 },
                 "AWS::CloudFormation::Init": {
                     "config": {
+                        "sources" : {
+                            "/home/ubuntu" : "http://aws-cloudwatch.s3.amazonaws.com/downloads/CloudWatchMonitoringScripts-1.2.1.zip",
+                            "/etc/consul.d" : { "Fn::Join" : ["",
+                                ["https://s3.amazonaws.com/", { "Ref" : "ConsulQSS3BucketName" }, "/", { "Ref" : "ConsulQSS3KeyPrefix"}, "ClientConfig.tar.gz"]] }
+                        },
+                        "commands": {
+                            "datadog_checks": {
+                                "command" : "/tmp/sbin/enable_datadog_checks.sh > /var/log/datadog_checks.log"
+                            },
+                            "add_jmx_port" : {
+                                "command" : "echo 'JMX_PORT=9999' >> /etc/environment"
+                            }
+                        },
                         "files": {
+                            "/tmp/sbin/enable_datadog_checks.sh" : {
+                                "content": { "Fn::Join" : ["", [
+                                    "#!/bin/bash\n",
+                                    "\n",
+                                    "case '", { "Ref" : "NodeDesignation" }, "' in\n",
+                                    "    broker)\n",
+                                    "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
+                                    "        cp /etc/dd-agent/conf.d/kafka_consumer.yaml.example /etc/dd-agent/conf.d/kafka_consumer.yaml\n",
+                                    "        ;;\n",
+                                    "    worker)\n",
+                                    "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
+                                    "        ;;\n",
+                                    "    zookeeper)\n",
+                                    "        cp /etc/dd-agent/conf.d/zk.yaml.example /etc/dd-agent/conf.d/zk.yaml\n",
+                                    "        ;;\n",
+                                    "esac\n"
+                                ]]},
+                                "mode": "000700"
+                            },
+                            "/var/spool/cron/crontabs/ubuntu" : {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "*/5 * * * * ~/aws-scripts-mon/mon-put-instance-data.pl --mem-util --from-cron",
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "group": "crontab",
+                                "mode": "000600",
+                                "owner": "ubuntu"
+                            },
+                            "/etc/consul/client.json" : {
+                                "content" : { "Fn::Join" : ["", [
+                                    "{\n",
+                                    "   \"server\": false,\n",
+                                    "   \"ui\": true,\n",
+                                    "   \"data_dir\": \"/var/consul\",\n",
+                                    "   \"client_addr\": \"0.0.0.0\",\n",
+                                    "   \"retry_join_ec2\": {\n",
+                                    "       \"tag_key\": \"", {"Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagKey"}}  ,"\",\n",
+                                    "       \"tag_value\": \"", {"Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagValue"}}, "\"\n",
+                                    "   }\n",
+                                    "}\n"
+                                ]]},
+                                "mode" : "000640"
+                            },
+                            "/etc/dd-agent/datadog.conf" : {
+                                "content" : { "Fn::Join" : ["", [
+                                    "[Main]\n",
+                                    "\n",
+                                    "dd_url: https://app.datadoghq.com\n",
+                                    "api_key:", { "Ref" : "DatadogApiKey" }, "\n",
+                                    "collect_ec2_tags: yes\n"
+                                ]]}
+                            },
+                            "/etc/dd-agent/conf.d/consul.yaml": {
+                                "content" : { "Fn::Join" : ["", [
+                                    "init_config:\n",
+                                    "\n",
+                                    "instances:\n",
+                                    "   - url: http://localhost:8500\n",
+                                    "     ca_bundle_file: '/etc/consul.d/ssl/ca.cert'\n",
+                                    "     client_cert_file: '/etc/consul.d/ssl/consul.cert'\n",
+                                    "     private_cert_file: '/etc/consul.d/ssl/consul.key'\n",
+                                    "     catalog_checks: yes\n",
+                                    "     self_leader_check: yes\n",
+                                    "     new_leader_checks: no\n",
+                                    "     network_latency_checks: yes\n",
+                                    "\n"
+                                ]]}
+                            },
                             "/tmp/sbin/compute-heap-opts": {
                                 "source": {
                                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/compute-heap-opts"
@@ -460,6 +577,28 @@
                                 "owner": "root",
                                 "group": "root",
                                 "authentication": "S3AccessCreds"
+                            }
+                        },
+                        "packages" : {
+                            "apt" : {
+                                "datadog-agent" : [],
+                                "libwww-perl" : [],
+                                "libdatetime-perl" : [],
+                                "unzip" : []
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "datadog-agent" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [
+                                        "/etc/dd-agent/datadog.conf",
+                                        "/etc/dd-agent/conf.d/kafka.yaml",
+                                        "/etc/dd-agent/conf.d/kafka_consumer.yaml",
+                                        "/etc/dd-agent/conf.d/zk.yaml"],
+                                    "packages" : { "apt" : ["datadog-agent"] }
+                                }
                             }
                         }
                     }
@@ -731,6 +870,13 @@
                                 },
                                 " --resource Nodes\n",
                                 "\n",
+                                "## Install Datadog Agent on the node\n",
+                                "DD_API_KEY=",
+                                {
+                                    "Ref": "DatadogApiKey"
+                                },
+                                " bash -c \"$(curl -L https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh)\"",
+                                "\n",
                                 "## Save off other cluster details in prep for configuration\n",
                                 "echo ",
                                 {
@@ -772,6 +918,35 @@
                                     "Ref": "AWS::Region"
                                 },
                                 "\n",
+                                "## Prepare Consul for the instance\n",
+                                "CONSUL_BOOTSTRAP_FILE=consul_client_bootstrap.sh\n",
+                                "CONSUL_BOOTSTRAP=",
+                                {
+                                    "Fn::Sub": "https://${ConsulQSS3BucketName}.s3.amazonaws.com/${ConsulQSS3KeyPrefix}scripts/"
+                                },
+                                "${CONSUL_BOOTSTRAP_FILE}",
+                                "\n",
+                                "echo ${CONSUL_BOOTSTRAP}",
+                                "\n",
+                                "wget ${CONSUL_BOOTSTRAP}",
+                                "\n",
+                                "chmod +x ${CONSUL_BOOTSTRAP_FILE}\n",
+                                "./${CONSUL_BOOTSTRAP_FILE} ",
+                                " --consul_tag_key aws:cloudformation:stack-name ",
+                                " --consul_tag_value ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                " --s3bucket ",
+                                {
+                                    "Ref": "ConsulQSS3BucketName"
+                                },
+                                " --s3prefix ",
+                                {
+                                    "Ref": "ConsulQSS3KeyPrefix"
+                                },
+                                "\n",
+                                "## Finished preparing consul.\n",
                                 "AMI_SBIN=/tmp/sbin \n",
                                 "\n",
                                 "## Prepare the instance \n",

@@ -167,6 +167,33 @@
         }
     },
     "Parameters": {
+        "DatadogApiKey": {
+            "Description": "API Key required to authenticate with Datadog.",
+            "Type": "String"
+        },
+        "ConsulVersion": {
+            "Default": "0.8.1",
+            "Description": "Version of Consul to deploy",
+            "Type": "String"
+        },
+        "ConsulServerStack": {
+            "Description": "The ARN ID for the Cloudformation stack that created the consul servers",
+            "Type": "String"
+        },
+        "ConsulQSS3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "ConsulQSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "hashicorp/consul/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        },
         "AssignPublicIP": {
             "AllowedValues": [
               "true",
@@ -276,7 +303,7 @@
                 "Amazon-Linux-HVM"
             ],
             "ConstraintDescription": "Supported versions of Linux AMIs for Confluent deployments",
-            "Default": "CentOS-7-HVM",
+            "Default": "Ubuntu-Server-16.04-LTS-HVM",
             "Description": "Operating system AMI for cluster instances; you MUST authorize access to the proper AMI at https://aws.amazon.com/marketplace",
             "Type": "String"
         },
@@ -378,6 +405,8 @@
         },
         "ZookeeperNodeInstanceType": {
             "AllowedValues": [
+                "t2.small",
+                "t2.medium",
                 "m3.medium",
                 "m3.large",
                 "m3.xlarge",
@@ -502,7 +531,22 @@
                         "PolicyDocument": {
                             "Statement": [
                                 {
+                                    "Effect": "Allow",
+                                    "Action": ["s3:ListBucket"],
+                                    "Resource": [ { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref": "ConsulQSS3BucketName" } ]] } ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [ "s3:GetObject" ],
+                                    "Resource": [ { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref": "ConsulQSS3BucketName" }, "/", { "Ref": "ConsulQSS3KeyPrefix" }, "*" ]] } ]
+                                },
+                                {
                                     "Action": [
+                                        "cloudwatch:PutMetricData",
+                                        "cloudwatch:GetMetricStatistics",
+                                        "cloudwatch:ListMetrics",
+                                        "ec2:Describe*",
+                                        "ec2:Get*",
                                         "ec2:CreateTags",
                                         "ec2:DescribeInstances",
                                         "cloudformation:DescribeStackResources",
@@ -538,6 +582,21 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "DatadogApiKey": {
+                        "Ref": "DatadogApiKey"
+                    },
+                    "ConsulVersion": {
+                        "Ref": "ConsulVersion"
+                    },
+                    "ConsulServerStack": {
+                        "Ref": "ConsulServerStack"
+                    },
+                    "ConsulQSS3BucketName": {
+                        "Ref": "ConsulQSS3BucketName"
+                    },
+                    "ConsulQSS3KeyPrefix": {
+                        "Ref": "ConsulQSS3KeyPrefix"
+                    },
                     "AssignPublicIP": {
                         "Ref": "AssignPublicIP"
                     },
@@ -618,6 +677,21 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "DatadogApiKey": {
+                        "Ref": "DatadogApiKey"
+                    },
+                    "ConsulVersion": {
+                        "Ref": "ConsulVersion"
+                    },
+                    "ConsulServerStack": {
+                        "Ref": "ConsulServerStack"
+                    },
+                    "ConsulQSS3BucketName": {
+                        "Ref": "ConsulQSS3BucketName"
+                    },
+                    "ConsulQSS3KeyPrefix": {
+                        "Ref": "ConsulQSS3KeyPrefix"
+                    },
                     "AssignPublicIP": {
                         "Ref": "AssignPublicIP"
                     },
@@ -692,6 +766,21 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "DatadogApiKey": {
+                        "Ref": "DatadogApiKey"
+                    },
+                    "ConsulVersion": {
+                        "Ref": "ConsulVersion"
+                    },
+                    "ConsulServerStack": {
+                        "Ref": "ConsulServerStack"
+                    },
+                    "ConsulQSS3BucketName": {
+                        "Ref": "ConsulQSS3BucketName"
+                    },
+                    "ConsulQSS3KeyPrefix": {
+                        "Ref": "ConsulQSS3KeyPrefix"
+                    },
                     "AssignPublicIP": {
                         "Ref": "AssignPublicIP"
                     },
@@ -783,6 +872,22 @@
                         "ToPort": "22",
                         "CidrIp": {
                             "Ref": "SSHAccessCIDR"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8300",
+                        "ToPort": "8302",
+                        "CidrIp": {
+                            "Ref": "RemoteAccessCIDR"
+                        }
+                    },
+                    {
+                        "IpProtocol": "udp",
+                        "FromPort": "8301",
+                        "ToPort": "8302",
+                        "CidrIp": {
+                            "Ref": "RemoteAccessCIDR"
                         }
                     }
                 ]
