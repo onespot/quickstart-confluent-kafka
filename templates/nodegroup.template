@@ -2,6 +2,21 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "CloudFormation sub-template for Auto-scaling group deployment",
     "Parameters": {
+        "AssumeRole": {
+            "Type": "String",
+            "Description": "Optional IAM role ARN to assume to get the IAM users from another account",
+            "Default": ""
+        },
+        "AuthorizedIamGroups" : {
+            "Default": "",
+            "Description": "Comma separate IAM groups whose users will be given SSH access.",
+            "Type": "String"
+        },
+        "AuthorizedSudoerGroups" : {
+            "Default": "",
+            "Description": "Comma separated IAM groups whose users will be given sudo access.",
+            "Type": "String"
+        },
         "DatadogApiKey": {
             "Description": "API Key required to authenticate with Datadog.",
             "Type": "String"
@@ -305,6 +320,30 @@
         }
     },
     "Conditions": {
+        "BrokerNode": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NodeDesignation"
+                },
+                "broker"
+            ]
+        },
+        "WorkerNode": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NodeDesignation"
+                },
+                "worker"
+            ]
+        },
+        "ZookeeperNode": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NodeDesignation"
+                },
+                "zookeeper"
+            ]
+        },
         "EphemeralStorage": {
             "Fn::Equals": [
                 {
@@ -399,14 +438,46 @@
                                 ["https://s3.amazonaws.com/", { "Ref" : "ConsulQSS3BucketName" }, "/", { "Ref" : "ConsulQSS3KeyPrefix"}, "ClientConfig.tar.gz"]] }
                         },
                         "commands": {
-                            "datadog_checks": {
-                                "command" : "/tmp/sbin/enable_datadog_checks.sh > /var/log/datadog_checks.log"
+                            "a-install": {
+                                "command": {
+                                    "Fn::Sub": "./install.sh -a \"${AssumeRole}\" -i \"${AuthorizedIamGroups}\" -s \"${AuthorizedSudoerGroups}\""
+                                },
+                                "cwd": "/opt/aws-ec2-ssh"
                             },
-                            "add_jmx_port" : {
-                                "command" : "echo 'JMX_PORT=9999' >> /etc/environment"
+                            "b-consul-services": {
+                                "command" : "/tmp/sbin/confluent_services.sh > /var/log/confluent_services.log"
+                            },
+                            "c-datadog_checks": {
+                                "command" : "/tmp/sbin/enable_datadog_checks.sh > /var/log/datadog_checks.log"
                             }
                         },
                         "files": {
+                            "/opt/aws-ec2-ssh/install.sh": {
+                                "source": "https://raw.githubusercontent.com/onespot/aws-ec2-ssh/onespot-master/install.sh",
+                                "mode": "000550",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/tmp/sbin/confluent_services.sh" : {
+                                "content": { "Fn::Join" : ["", [
+                                    "#!/bin/bash\n",
+                                    "\n",
+                                    "case '", { "Ref" : "NodeDesignation" }, "' in\n",
+                                    "    broker)\n",
+                                    "        echo '{\"service\": {\"name\": \"cp-kafka\", \"port\": 9092 } }' | tee /etc/consul.d/service_kafka.json\n",
+                                    "        ;;\n",
+                                    "    worker)\n",
+                                    "        echo '{\"service\": {\"name\": \"cp-schema-registry\", \"port\": 8081 } }' | tee /etc/consul.d/service_schema_registry.json\n",
+                                    "        echo '{\"service\": {\"name\": \"cp-kafka-connect\", \"port\": 8083 } }' | tee /etc/consul.d/service_kafka_connect.json\n",
+                                    "        echo '{\"service\": {\"name\": \"cp-kafka-rest\", \"port\": 8082 } }' | tee /etc/consul.d/service_kafka_rest.json\n",
+                                    "        ;;\n",
+                                    "    zookeeper)\n",
+                                    "        echo '{\"service\": {\"name\": \"cp-zookeeper\", \"port\": 2181 } }' | tee /etc/consul.d/service_zookeeper.json\n",
+                                    "        ;;\n",
+                                    "esac\n"
+                                ]]},
+                                "mode": "000700"
+                            },
                             "/tmp/sbin/enable_datadog_checks.sh" : {
                                 "content": { "Fn::Join" : ["", [
                                     "#!/bin/bash\n",
@@ -414,10 +485,8 @@
                                     "case '", { "Ref" : "NodeDesignation" }, "' in\n",
                                     "    broker)\n",
                                     "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
-                                    "        cp /etc/dd-agent/conf.d/kafka_consumer.yaml.example /etc/dd-agent/conf.d/kafka_consumer.yaml\n",
                                     "        ;;\n",
                                     "    worker)\n",
-                                    "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
                                     "        ;;\n",
                                     "    zookeeper)\n",
                                     "        cp /etc/dd-agent/conf.d/zk.yaml.example /etc/dd-agent/conf.d/zk.yaml\n",
@@ -440,21 +509,6 @@
                                 "mode": "000600",
                                 "owner": "ubuntu"
                             },
-                            "/etc/consul/client.json" : {
-                                "content" : { "Fn::Join" : ["", [
-                                    "{\n",
-                                    "   \"server\": false,\n",
-                                    "   \"ui\": true,\n",
-                                    "   \"data_dir\": \"/var/consul\",\n",
-                                    "   \"client_addr\": \"0.0.0.0\",\n",
-                                    "   \"retry_join_ec2\": {\n",
-                                    "       \"tag_key\": \"", {"Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagKey"}}  ,"\",\n",
-                                    "       \"tag_value\": \"", {"Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagValue"}}, "\"\n",
-                                    "   }\n",
-                                    "}\n"
-                                ]]},
-                                "mode" : "000640"
-                            },
                             "/etc/dd-agent/datadog.conf" : {
                                 "content" : { "Fn::Join" : ["", [
                                     "[Main]\n",
@@ -462,7 +516,10 @@
                                     "dd_url: https://app.datadoghq.com\n",
                                     "api_key:", { "Ref" : "DatadogApiKey" }, "\n",
                                     "collect_ec2_tags: yes\n"
-                                ]]}
+                                ]]},
+                                "group": "dd-agent",
+                                "mode": "000644",
+                                "owner": "dd-agent"
                             },
                             "/etc/dd-agent/conf.d/consul.yaml": {
                                 "content" : { "Fn::Join" : ["", [
@@ -581,6 +638,8 @@
                         },
                         "packages" : {
                             "apt" : {
+                                "jq" : [],
+                                "git" : [],
                                 "datadog-agent" : [],
                                 "libwww-perl" : [],
                                 "libdatetime-perl" : [],
@@ -932,10 +991,13 @@
                                 "\n",
                                 "chmod +x ${CONSUL_BOOTSTRAP_FILE}\n",
                                 "./${CONSUL_BOOTSTRAP_FILE} ",
-                                " --consul_tag_key aws:cloudformation:stack-name ",
+                                " --consul_tag_key ",
+                                {
+                                    "Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagKey"}
+                                },
                                 " --consul_tag_value ",
                                 {
-                                    "Ref": "AWS::StackName"
+                                    "Fn::ImportValue" : {"Fn::Sub" : "${ConsulServerStack}-ConsulEc2RetryTagValue"}
                                 },
                                 " --s3bucket ",
                                 {
@@ -1035,6 +1097,8 @@
                                     "Ref": "NodesReadyHandle"
                                 },
                                 "'\n",
+                                "## Restart the datadog service\n",
+                                "service datadog-agent restart\n",
                                 "\n",
                                 "## Wait for all nodes to issue the signal\n",
                                 "$AMI_SBIN/wait-for-resource.sh NodesReadyCondition \n",

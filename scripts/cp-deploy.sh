@@ -281,6 +281,9 @@ configure_confluent_zk() {
 configure_kafka_broker() {
 	[ ! -f $BROKER_CFG ] && return 1
 
+    # Add JMX PORT 9999 for datadog (rick.bolkey)
+	sed -i '$iexport JMX_PORT=9999' $BROKER_SCRIPT
+
 	local numBrokers=`echo ${brokers//,/ } | wc -w`
 
 	local ncpu=$(grep ^processor /proc/cpuinfo | wc -l)

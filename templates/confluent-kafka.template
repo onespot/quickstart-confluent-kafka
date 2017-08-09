@@ -167,6 +167,21 @@
         }
     },
     "Parameters": {
+        "AssumeRole": {
+            "Type": "String",
+            "Description": "Optional IAM role ARN to assume to get the IAM users from another account",
+            "Default": ""
+        },
+        "AuthorizedIamGroups" : {
+            "Default": "",
+            "Description": "Comma separate IAM groups whose users will be given SSH access.",
+            "Type": "String"
+        },
+        "AuthorizedSudoerGroups" : {
+            "Default": "",
+            "Description": "Comma separated IAM groups whose users will be given sudo access.",
+            "Type": "String"
+        },
         "DatadogApiKey": {
             "Description": "API Key required to authenticate with Datadog.",
             "Type": "String"
@@ -223,6 +238,7 @@
                 "c3.xlarge",
                 "c3.2xlarge",
                 "c3.4xlarge",
+                "r4.xlarge",
                 "d2.xlarge",
                 "d2.2xlarge",
                 "d2.4xlarge",
@@ -458,6 +474,38 @@
         }
     },
     "Conditions": {
+        "UseCrossAccountIAM": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "AssumeRole"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        },
+        "UseLocalIAM": {
+            "Fn::Equals": [
+                {
+                    "Ref": "AssumeRole"
+                },
+                ""
+            ]
+        },
+        "HasKeyName": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "KeyPairName"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        },
         "IndependentWorkers": {
             "Fn::Not": [
                 {
@@ -490,6 +538,113 @@
         }
     },
     "Resources": {
+        "ConsulPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "consul-bucket-access",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeTags",
+                                "cloudwatch:PutMetricData",
+                                "cloudwatch:GetMetricStatistics",
+                                "cloudwatch:ListMetrics"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": ["s3:ListBucket"],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${ConsulQSS3BucketName}"
+                            }
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObject"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${ConsulQSS3BucketName}/${ConsulQSS3KeyPrefix}*"
+                            },
+                            "Effect": "Allow"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "InstanceIAMRole"
+                    }
+                ]
+            }
+        },
+        "CrossAccountRolePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Condition": "UseCrossAccountIAM",
+            "Properties": {
+                "PolicyName": "crossaccountiam",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Resource": {
+                                "Ref": "AssumeRole"
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "InstanceIAMRole"
+                    }
+                ]
+            }
+        },
+        "LocalRolePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Condition": "UseLocalIAM",
+            "Properties": {
+                "PolicyName": "iam",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:ListUsers",
+                                "iam:GetGroup"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:ListSSHPublicKeys",
+                                "iam:GetSSHPublicKey"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:user/*"
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "ec2:DescribeTags",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "InstanceIAMRole"
+                    }
+                ]
+            }
+        },
         "InstanceIAMRole": {
             "Properties": {
                 "AssumeRolePolicyDocument": {
@@ -530,16 +685,6 @@
                     {
                         "PolicyDocument": {
                             "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": ["s3:ListBucket"],
-                                    "Resource": [ { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref": "ConsulQSS3BucketName" } ]] } ]
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [ "s3:GetObject" ],
-                                    "Resource": [ { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref": "ConsulQSS3BucketName" }, "/", { "Ref": "ConsulQSS3KeyPrefix" }, "*" ]] } ]
-                                },
                                 {
                                     "Action": [
                                         "cloudwatch:PutMetricData",
@@ -582,6 +727,15 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "AssumeRole": {
+                        "Ref": "AssumeRole"
+                    },
+                    "AuthorizedIamGroups": {
+                        "Ref": "AuthorizedIamGroups"
+                    },
+                    "AuthorizedSudoerGroups": {
+                        "Ref": "AuthorizedSudoerGroups"
+                    },
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
                     },
@@ -677,6 +831,15 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "AssumeRole": {
+                        "Ref": "AssumeRole"
+                    },
+                    "AuthorizedIamGroups": {
+                        "Ref": "AuthorizedIamGroups"
+                    },
+                    "AuthorizedSudoerGroups": {
+                        "Ref": "AuthorizedSudoerGroups"
+                    },
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
                     },
@@ -766,6 +929,15 @@
                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/nodegroup.template"
                 },
                 "Parameters": {
+                    "AssumeRole": {
+                        "Ref": "AssumeRole"
+                    },
+                    "AuthorizedIamGroups": {
+                        "Ref": "AuthorizedIamGroups"
+                    },
+                    "AuthorizedSudoerGroups": {
+                        "Ref": "AuthorizedSudoerGroups"
+                    },
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
                     },
