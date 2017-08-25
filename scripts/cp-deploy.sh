@@ -496,13 +496,13 @@ configure_workers() {
 		set_property $LEGACY_CONSUMER_CFG "group.id" "${CLUSTERNAME}-consumer-group"
 		set_property $LEGACY_CONSUMER_CFG "zookeeper.connect" "$zconnect"
 		set_property $LEGACY_CONSUMER_CFG "zookeeper.connection.timeout.ms" 30000
-		set_property $LEGACY_CONSUMER_CFG "interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" 
+#		set_property $LEGACY_CONSUMER_CFG "interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
 	fi
 
 	if [ -f $LEGACY_PRODUCER_CFG ] ; then
 		set_property $LEGACY_PRODUCER_CFG "bootstrap.servers" "${bconnect}"
 		set_property $LEGACY_PRODUCER_CFG "request.timeout.ms" "100"
-		set_property $LEGACY_PRODUCER_CFG "interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" 
+#		set_property $LEGACY_PRODUCER_CFG "interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
 	fi
 
 		# Configure the Kafka Connect workers
@@ -536,8 +536,8 @@ configure_workers() {
 		set_property $KAFKA_CONNECT_CFG  "value.converter.schema.registry.url" "http://${srconnect}"
 		set_property $KAFKA_CONNECT_CFG  "value.converter.schemas.enable" "true"
 
-		set_property $KAFKA_CONNECT_CFG  "consumer.interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor" 
-		set_property $KAFKA_CONNECT_CFG  "producer.interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor" 
+#		set_property $KAFKA_CONNECT_CFG  "consumer.interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+#		set_property $KAFKA_CONNECT_CFG  "producer.interceptor.classes" "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
 
 		[ -n "$KC_PLUGIN_PATH" ] && [ -d "$KC_PLUGIN_DIR" ] \
 			&& set_property $KAFKA_CONNECT_CFG "plugin.path" "$KC_PLUGIN_PATH"
