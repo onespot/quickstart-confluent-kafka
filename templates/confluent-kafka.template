@@ -1374,7 +1374,20 @@
                     "ClusterInfoCondition",
                     "Data"
                 ]
+            },
+            "Export" : {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-ClusterInfo" }
             }
+        },
+        "InstanceIAMRole": {
+            "Description": "IAM Role used for nodes.",
+            "Value": {
+                "Ref": "InstanceIAMRole"
+            },
+            "Export" : {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-InstanceIAMRole" }
+            }
+
         },
         "SubnetID": {
             "Description": "Subnet(s) used by deployment",
@@ -1385,6 +1398,9 @@
                         "Ref": "SubnetID"
                     }
                 ]
+            },
+            "Export" : {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-SubnetID" }
             }
         }
     }
