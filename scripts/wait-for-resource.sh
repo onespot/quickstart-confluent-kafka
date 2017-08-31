@@ -79,7 +79,7 @@ fi
 
 ## TBD ... add timeout (optional, since CFT will enforce timeout)
 #
-while [ $resourceStatus != "CREATE_COMPLETE" ]
+while [[ $resourceStatus != "CREATE_COMPLETE" || $resourceStatus != "UPDATE_COMPLETE" ]]
 do
     sleep 30
     resourceStatus=$(aws cloudformation describe-stack-resources \
