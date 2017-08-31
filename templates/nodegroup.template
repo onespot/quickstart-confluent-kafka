@@ -1116,5 +1116,16 @@
                 }
             }
         }
+    },
+    "Outputs": {
+        "Nodes": {
+            "Description": "The autoscaling group for the nodes.",
+            "Value": {
+                "Ref" : "Nodes"
+            },
+            "Export": {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-Nodes" }
+            }
+        }
     }
 }

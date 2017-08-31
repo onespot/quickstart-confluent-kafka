@@ -1366,6 +1366,18 @@
         }
     },
     "Outputs": {
+        "BrokerNodes": {
+            "Description": "",
+            "Value": {
+                "Fn::GetAtt": [
+                    "BrokerStack",
+                    "Outputs.Nodes"
+                ]
+            },
+            "Export": {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-BrokerNodes" }
+            }
+        },
         "ClusterInfo": {
             "Condition": "EnableWaitConditions",
             "Description": "Cluster Information",
