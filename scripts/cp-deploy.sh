@@ -72,6 +72,8 @@ THIS_FQDN=$(curl -f -s $murl_top/hostname)
 [ -z "${THIS_FQDN}" ] && THIS_FQDN=$(hostname --fqdn)
 THIS_HOST=${THIS_FQDN%%.*}
 
+THIS_IP=$(curl -f -s $murl_top/local-ipv4)
+
 
 # Validated for versions 3.1 and beyond
 
@@ -311,6 +313,9 @@ configure_kafka_broker() {
 		# (since we don't know how long before other nodes will come on line)
 	set_property $BROKER_CFG "zookeeper.connect" "$zconnect"
 	set_property $BROKER_CFG "zookeeper.connection.timeout.ms" 300000
+
+    # set advertised address to the private ip (rick.bolkey)
+	set_property $BROKER_CFG "advertised.listeners" "PLAINTEXT://$THIS_IP:${brokerPort:-9092}"
 
 	if [ -n "$DATA_DIRS" ] ; then
 		for d in $DATA_DIRS ; do
