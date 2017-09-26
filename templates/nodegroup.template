@@ -478,6 +478,15 @@
                                 ]]},
                                 "mode": "000700"
                             },
+                            "/etc/dd-agent/conf.d/http_check.yaml.example": {
+                                "source": {
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}files/worker_http_check.yaml"
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
+                            },
                             "/tmp/sbin/enable_datadog_checks.sh" : {
                                 "content": { "Fn::Join" : ["", [
                                     "#!/bin/bash\n",
@@ -487,6 +496,7 @@
                                     "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
                                     "        ;;\n",
                                     "    worker)\n",
+                                    "        cp /etc/dd-agent/conf.d/http_check.yaml.example /etc/dd-agent/conf.d/http_check.yaml\n",
                                     "        ;;\n",
                                     "    zookeeper)\n",
                                     "        cp /etc/dd-agent/conf.d/zk.yaml.example /etc/dd-agent/conf.d/zk.yaml\n",

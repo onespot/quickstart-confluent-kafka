@@ -1,0 +1,21 @@
+init_config:
+
+instances:
+
+  - name: Schema Registry
+    url: http://localhost:8081/
+    # disable_ssl_validation: false      # default is true, so set false to check SSL validation
+    # ca_certs: /path/to/ca/file         # e.g. /etc/ssl/certs/ca-certificates.crt
+    # check_certificate_expiration: true # default is true
+    # days_warning: 28                   # default 14
+    # days_critical: 14                  # default 7
+    # timeout: 3                         # in seconds. Default is 1.
+    skip_event: true # Default is false, i.e. emit events instead of service checks. Recommend to set to true.
+
+  - name: Kafka Rest
+    url: http://localhost:8082/
+    skip_event: true
+
+  - name: Kafka Connect
+    url: http://localhost:8083/
+    skip_event: true
