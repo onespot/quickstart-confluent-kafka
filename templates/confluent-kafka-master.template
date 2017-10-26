@@ -559,6 +559,9 @@
                     "ConfluentVersion": {
                         "Ref": "ConfluentVersion"
                     },
+                    "ConnectorURLs": {
+                        "Ref": "ConnectorURLs"
+                    },
                     "KeyPairName": {
                         "Ref": "KeyPairName"
                     },

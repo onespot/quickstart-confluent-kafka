@@ -769,9 +769,6 @@
                     "ConfluentVersion": {
                         "Ref": "ConfluentVersion"
                     },
-                    "ConnectorURLs": {
-                        "Ref": "ConnectorURLs"
-                    },
                     "InstanceProfile": {
                         "Ref": "InstanceProfile"
                     },
@@ -872,6 +869,9 @@
                     },
                     "ConfluentVersion": {
                         "Ref": "ConfluentVersion"
+                    },
+                    "ConnectorURLs": {
+                        "Ref": "ConnectorURLs"
                     },
                     "InstanceProfile": {
                         "Ref": "InstanceProfile"
