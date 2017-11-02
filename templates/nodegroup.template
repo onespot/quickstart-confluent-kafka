@@ -2,6 +2,16 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "CloudFormation sub-template for Auto-scaling group deployment",
     "Parameters": {
+        "AssignPublicIP": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "ConstraintDescription": "Either true or false",
+            "Default": "true",
+            "Description": "Allociate a public IP address to each instance",
+            "Type": "String"
+        },
         "BootDiskSize": {
             "ConstraintDescription": "Deployment supports 8 to 128 GB for boot volumes",
             "Default": "24",
@@ -40,13 +50,8 @@
             "Type": "String"
         },
         "ConfluentVersion": {
-            "AllowedValues": [
-                "3.2.2",
-                "3.2.1",
-                "3.1.2"
-            ],
             "ConstraintDescription": "Supported versions of Confluent Platform within AWS Marketplace",
-            "Default": "3.2.2",
+            "Default": "3.3.0",
             "Description": "Confluent Software Version",
             "Type": "String"
         },
@@ -57,6 +62,10 @@
         },
         "InstanceProfile": {
             "Description": "IAM Profile for the deployment",
+            "Type": "String"
+        },
+        "InstanceRole": {
+            "Description": "IAM Role for the deployment. The EC2 instances must be able to access this role using the instance profile.",
             "Type": "String"
         },
         "KeyPairName": {
@@ -155,10 +164,10 @@
             "Type": "String"
         },
         "QSS3KeyPrefix": {
-            "AllowedPattern": "^[0-9a-zA-Z-]+(/[0-9a-zA-Z-]+)*$",
-            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/). It cannot start or end with forward slash (/) because they are automatically appended.",
-            "Default": "confluent/kafka/latest",
-            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/). It cannot start or end with forward slash (/) because they are automatically appended.",
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "confluent/kafka/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
             "Type": "String"
         },
         "SubnetID": {
@@ -169,137 +178,79 @@
     "Mappings": {
         "AWSAMIRegionMap": {
             "AMI": {
-                "AMZNLINUXHVM": "amzn-ami-hvm-2017.03.1.20170623-x86_64-gp2",
-                "CENTOS7HVM": "CentOS Linux 7 x86_64 HVM EBS 1704_01-b7ee8a69-ee97-4a49-9e68-afaee216db2e-ami-d52f5bc3.4",
-                "US1604HVM": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20170619.1"
+                "AMZNLINUXHVM": "amzn-ami-hvm-2017.09.0.20170930-x86_64-gp2",
+                "CENTOS7HVM": "CentOS Linux 7 x86_64 HVM EBS 1708_01-b7ee8a69-ee97-4a49-9e68-afaee216db2e-ami-0d8f9576.4",
+                "US1604HVM": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20171026.1"
             },
             "ap-northeast-1": {
-                "AMZNLINUXHVM": "ami-3bd3c45c",
-                "CENTOS7HVM": "ami-29d1e34e",
-                "US1604HVM": "ami-785c491f"
+                "AMZNLINUXHVM": "ami-2a69be4c",
+                "CENTOS7HVM": "ami-e4599a82",
+                "US1604HVM": "ami-15872773"
             },
             "ap-northeast-2": {
-                "AMZNLINUXHVM": "ami-e21cc38c",
-                "CENTOS7HVM": "ami-08e93466",
-                "US1604HVM": "ami-94d20dfa"
+                "AMZNLINUXHVM": "ami-9bec36f5",
+                "CENTOS7HVM": "ami-ea12c984",
+                "US1604HVM": "ami-7b1cb915"
             },
             "ap-south-1": {
-                "AMZNLINUXHVM": "ami-47205e28",
-                "CENTOS7HVM": "ami-3c0e7353",
-                "US1604HVM": "ami-49e59a26"
+                "AMZNLINUXHVM": "ami-4fc58420",
+                "CENTOS7HVM": "ami-ccde99a3",
+                "US1604HVM": "ami-bc0d40d3"
             },
             "ap-southeast-1": {
-                "AMZNLINUXHVM": "ami-77af2014",
-                "CENTOS7HVM": "ami-7d2eab1e",
-                "US1604HVM": "ami-2378f540"
+                "AMZNLINUXHVM": "ami-0797ea64",
+                "CENTOS7HVM": "ami-1fbad07c",
+                "US1604HVM": "ami-67a6e604"
             },
             "ap-southeast-2": {
-                "AMZNLINUXHVM": "ami-10918173",
-                "CENTOS7HVM": "ami-34171d57",
-                "US1604HVM": "ami-e94e5e8a"
+                "AMZNLINUXHVM": "ami-8536d6e7",
+                "CENTOS7HVM": "ami-e9c7208b",
+                "US1604HVM": "ami-41c12e23"
             },
             "ca-central-1": {
-                "AMZNLINUXHVM": "ami-a7aa15c3",
-                "CENTOS7HVM": "ami-28823e4c",
-                "US1604HVM": "ami-7ed56a1a"
+                "AMZNLINUXHVM": "ami-fd55ec99",
+                "CENTOS7HVM": "ami-cbd069af",
+                "US1604HVM": "ami-8a71c9ee"
             },
             "eu-central-1": {
-                "AMZNLINUXHVM": "ami-82be18ed",
-                "CENTOS7HVM": "ami-fa2df395",
-                "US1604HVM": "ami-1c45e273"
+                "AMZNLINUXHVM": "ami-c7ee5ca8",
+                "CENTOS7HVM": "ami-2540f74a",
+                "US1604HVM": "ami-97e953f8"
             },
             "eu-west-1": {
-                "AMZNLINUXHVM": "ami-d7b9a2b1",
-                "CENTOS7HVM": "ami-061b1560",
-                "US1604HVM": "ami-6d48500b"
+                "AMZNLINUXHVM": "ami-acd005d5",
+                "CENTOS7HVM": "ami-5f76b626",
+                "US1604HVM": "ami-add175d4"
             },
             "eu-west-2": {
-                "AMZNLINUXHVM": "ami-ed100689",
-                "CENTOS7HVM": "ami-e05a4d84",
-                "US1604HVM": "ami-cc7066a8"
+                "AMZNLINUXHVM": "ami-1a7f6d7e",
+                "CENTOS7HVM": "ami-951201f1",
+                "US1604HVM": "ami-ecbea388"
             },
             "sa-east-1": {
-                "AMZNLINUXHVM": "ami-87dab1eb",
-                "CENTOS7HVM": "ami-b31a75df",
-                "US1604HVM": "ami-34afc458"
+                "AMZNLINUXHVM": "ami-f1344b9d",
+                "CENTOS7HVM": "ami-afd7a5c3",
+                "US1604HVM": "ami-466b132a"
             },
             "us-east-1": {
-                "AMZNLINUXHVM": "ami-a4c7edb2",
-                "CENTOS7HVM": "ami-46c1b650",
-                "US1604HVM": "ami-d15a75c7"
+                "AMZNLINUXHVM": "ami-8c1be5f6",
+                "CENTOS7HVM": "ami-db48ada1",
+                "US1604HVM": "ami-da05a4a0"
             },
             "us-east-2": {
-                "AMZNLINUXHVM": "ami-8a7859ef",
-                "CENTOS7HVM": "ami-18f8df7d",
-                "US1604HVM": "ami-8b92b4ee"
+                "AMZNLINUXHVM": "ami-c5062ba0",
+                "CENTOS7HVM": "ami-d61133b3",
+                "US1604HVM": "ami-336b4456"
             },
             "us-west-1": {
-                "AMZNLINUXHVM": "ami-327f5352",
-                "CENTOS7HVM": "ami-f5d7f195",
-                "US1604HVM": "ami-73f7da13"
+                "AMZNLINUXHVM": "ami-02eada62",
+                "CENTOS7HVM": "ami-8a6751ea",
+                "US1604HVM": "ami-1c1d217c"
             },
             "us-west-2": {
-                "AMZNLINUXHVM": "ami-6df1e514",
-                "CENTOS7HVM": "ami-f4533694",
-                "US1604HVM": "ami-835b4efa"
-            }
-        },
-        "AWSInfoRegionMap": {
-            "ap-northeast-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "ap-northeast-2": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "ap-south-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "ap-southeast-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "ap-southeast-2": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "ca-central-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "eu-central-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "eu-west-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "eu-west-2": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "sa-east-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "us-east-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "us-east-2": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "us-west-1": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
-            },
-            "us-west-2": {
-                "Partition": "aws",
-                "QuickStartS3URL": "https://s3.amazonaws.com"
+                "AMZNLINUXHVM": "ami-e689729e",
+                "CENTOS7HVM": "ami-e535c59d",
+                "US1604HVM": "ami-0a00ce72"
             }
         },
         "LinuxAMINameMap": {
@@ -396,60 +347,34 @@
         "NodeLaunchConfig": {
             "Type": "AWS::AutoScaling::LaunchConfiguration",
             "Metadata": {
+                "AWS::CloudFormation::Authentication": {
+                    "S3AccessCreds": {
+                        "type": "S3",
+                        "roleName": {
+                            "Ref": "InstanceRole"
+                        },
+                        "buckets": [
+                            {
+                                "Ref": "QSS3BucketName"
+                            }
+                        ]
+                    }
+                },
                 "AWS::CloudFormation::Init": {
                     "config": {
                         "files": {
                             "/tmp/sbin/compute-heap-opts": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/compute-heap-opts"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/compute-heap-opts"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/cp-deploy.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/cp-deploy.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/cp-deploy.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
@@ -457,255 +382,84 @@
                             },
                             "/tmp/sbin/cp-install.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/cp-install.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/cp-install.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/cp-retrieve-connect-jars.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/cp-retrieve-connect-jars.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/cp-retrieve-connect-jars.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/cp-retrieve-scripts.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/cp-retrieve-scripts.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/cp-retrieve-scripts.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/gen-cluster-hosts.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/gen-cluster-hosts.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/gen-cluster-hosts.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/prep-cp-instance.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/prep-cp-instance.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/prep-cp-instance.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/prepare-disks.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/prepare-disks.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/prepare-disks.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/post-cp-info.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/post-cp-info.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/post-cp-info.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/wait-for-child-resource.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/wait-for-child-resource.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/wait-for-child-resource.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             },
                             "/tmp/sbin/wait-for-resource.sh": {
                                 "source": {
-                                    "Fn::Join": [
-                                        "/",
-                                        [
-                                            {
-                                                "Fn::FindInMap": [
-                                                    "AWSInfoRegionMap",
-                                                    {
-                                                        "Ref": "AWS::Region"
-                                                    },
-                                                    "QuickStartS3URL"
-                                                ]
-                                            },
-                                            {
-                                                "Ref": "QSS3BucketName"
-                                            },
-                                            {
-                                                "Ref": "QSS3KeyPrefix"
-                                            },
-                                            "scripts/wait-for-resource.sh"
-                                        ]
-                                    ]
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/wait-for-resource.sh"
                                 },
                                 "mode": "000755",
                                 "owner": "root",
-                                "group": "root"
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
                             }
                         }
                     }
@@ -807,10 +561,14 @@
                                         "Ref": "PersistentStorage"
                                     },
                                     "VolumeType": {
-                                        "Fn::If": [ 
+                                        "Fn::If": [
                                             "UseDefaultVT",
-                                            { "Ref": "AWS::NoValue" }, 
-                                            { "Ref": "PersistentStorageType" }
+                                            {
+                                                "Ref": "AWS::NoValue"
+                                            },
+                                            {
+                                                "Ref": "PersistentStorageType"
+                                            }
                                         ]
                                     },
                                     "DeleteOnTermination": "True"
@@ -823,10 +581,14 @@
                                         "Ref": "PersistentStorage"
                                     },
                                     "VolumeType": {
-                                        "Fn::If": [ 
+                                        "Fn::If": [
                                             "UseDefaultVT",
-                                            { "Ref": "AWS::NoValue" }, 
-                                            { "Ref": "PersistentStorageType" }
+                                            {
+                                                "Ref": "AWS::NoValue"
+                                            },
+                                            {
+                                                "Ref": "PersistentStorageType"
+                                            }
                                         ]
                                     },
                                     "DeleteOnTermination": "True"
@@ -839,10 +601,14 @@
                                         "Ref": "PersistentStorage"
                                     },
                                     "VolumeType": {
-                                        "Fn::If": [ 
+                                        "Fn::If": [
                                             "UseDefaultVT",
-                                            { "Ref": "AWS::NoValue" }, 
-                                            { "Ref": "PersistentStorageType" }
+                                            {
+                                                "Ref": "AWS::NoValue"
+                                            },
+                                            {
+                                                "Ref": "PersistentStorageType"
+                                            }
                                         ]
                                     },
                                     "DeleteOnTermination": "True"
@@ -855,10 +621,14 @@
                                         "Ref": "PersistentStorage"
                                     },
                                     "VolumeType": {
-                                        "Fn::If": [ 
+                                        "Fn::If": [
                                             "UseDefaultVT",
-                                            { "Ref": "AWS::NoValue" }, 
-                                            { "Ref": "PersistentStorageType" }
+                                            {
+                                                "Ref": "AWS::NoValue"
+                                            },
+                                            {
+                                                "Ref": "PersistentStorageType"
+                                            }
                                         ]
                                     },
                                     "DeleteOnTermination": "True"
@@ -904,7 +674,9 @@
                 "KeyName": {
                     "Ref": "KeyPairName"
                 },
-                "AssociatePublicIpAddress": "true",
+                "AssociatePublicIpAddress": {
+                    "Ref": "AssignPublicIP"
+                },
                 "IamInstanceProfile": {
                     "Ref": "InstanceProfile"
                 },
