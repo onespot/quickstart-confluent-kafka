@@ -35,7 +35,7 @@
 #		CONNECT_HEAP_OPTS
 #		CC_HEAP_OPTS
 
-THIS_HOST=`hostname`
+THIS_HOST=`hostname -s`
 
 # set -x
 
