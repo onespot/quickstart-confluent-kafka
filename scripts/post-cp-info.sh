@@ -50,11 +50,11 @@ fi
 # Grab our broker index from /tmp/brokers
 #	REMEMBER: ami-launch-index will ALWAYS be 0 for spot instances
 #
-THIS_HOST=`/bin/hostname`
+THIS_HOST=`/bin/hostname -s`
 murl_top=http://instance-data/latest/meta-data
 broker_index=$(curl -f -s $murl_top/ami-launch-index)
 if [ -r /tmp/brokers ] ; then
-	hindex=$(grep -n `hostname` /tmp/brokers | cut -d: -f1)
+	hindex=$(grep -n `hostname -s` /tmp/brokers | cut -d: -f1)
 
 	if [ -z "$hindex" ] ; then
 		echo "post-cp-info: $THIS_HOST is not a broker; nothing to do" | tee -a $LOG
@@ -163,7 +163,9 @@ CC_HOST_PUB=$(aws ec2 describe-instances --output text --region $THIS_REGION \
   --query 'Reservations[].Instances[].[PublicIpAddress,PublicDnsName,PrivateDnsName,Tags[?Key == `Name`] | [0].Value ]' | \
   grep -w "$CC_HOST" | cut -f 1)
 
-[ -n "$CC_HOST_PUB" ] && [ "$CC_HOST_PUB" != "none" ] && CC_HOST=$CC_HOST_PUB
+shopt -s nocasematch
+[ -n "$CC_HOST_PUB" ] && [[ "$CC_HOST_PUB" != "none" ]] && CC_HOST=$CC_HOST_PUB
+shopt -u nocasematch
 
 echo "Posting the following: " >> $LOG
 	

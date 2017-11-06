@@ -46,21 +46,21 @@ KADMIN_PASSWD=${KADMIN_PASSWD:-C0nfluent}
 #
 verify_instance_hostname() {
 	SYSCONFIG_NETWORK=/etc/sysconfig/network
-	CUR_HOSTNAME=`hostname`
+	CUR_FQDN=`hostname -f`
 
 	if [ -f $SYSCONFIG_NETWORK ] ; then
-		eval "CFG_`grep ^HOSTNAME= $SYSCONFIG_NETWORK`"
+		CFG_FQDN=`grep ^HOSTNAME= $SYSCONFIG_NETWORK | cut -d "=" -f2`
 
-		if [ "$CFG_HOSTNAME" != "$CUR_HOSTNAME" ] ; then
-			sed -i "s/^HOSTNAME=.*$/HOSTNAME=$CUR_HOSTNAME/" $SYSCONFIG_NETWORK
+		if [ "$CFG_FQDN" != "$CUR_FQDN" ] ; then
+			sed -i "s/^HOSTNAME=.*$/HOSTNAME=$CUR_FQDN/" $SYSCONFIG_NETWORK
 		fi
 	fi
 
 		# Some CentOS images have hard-coded hostnames left in /etc/hostname
 		# Just remove it if it doesn't match (module network domain)
 	if [ -f /etc/hostname ] ; then
-		CFG_HOSTNAME=`cat /etc/hostname`
-		if [ "$CFG_HOSTNAME" != "$CUR_HOSTNAME"  -a  "${CFG_HOSTNAME%%.*}" != "${CUR_HOSTNAME%%.*}" ] ; then
+		CFG_FQDN=`cat /etc/hostname`
+		if [ "$CFG_FQDN" != "$CUR_FQDN"  -a  "${CFG_FQDN%%.*}" != "${CUR_FQDN%%.*}" ] ; then
 			rm /etc/hostname
 		fi
 	fi
