@@ -805,8 +805,8 @@
                                 "\n",
                                 "## Tag the instance (now that we're sure of launch index)\n",
                                 "##   NOTE: ami_launch_index is correct only within a single subnet)\n",
-                                "instance_id=$(curl -f http://instance-data/latest/meta-data/instance-id)\n",
-                                "ami_launch_index=$(curl -f http://instance-data/latest/meta-data/ami-launch-index)\n",
+                                "instance_id=$(curl -f http://169.254.169.254/latest/meta-data/instance-id)\n",
+                                "ami_launch_index=$(curl -f http://169.254.169.254/latest/meta-data/ami-launch-index)\n",
                                 "launch_node=$(grep -w `hostname -s` /tmp/",
                                 {
                                     "Ref": "NodeDesignation"
