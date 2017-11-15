@@ -216,7 +216,7 @@
             "Type": "String"
         },
         "BrokerNodeStorage": {
-            "ConstraintDescription": "No more than 4096 GiB per device (16 TiB per node).",
+            "ConstraintDescription": "No more than 4096 GiB per device (16 TiB per node). Be Careful About Exceeding your AWS Storage Limit.",
             "Default": "512",
             "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
             "MaxValue": "4096",
@@ -370,10 +370,10 @@
             "Type": "String"
         },
         "WorkerNodeStorage": {
-            "ConstraintDescription": "No more than 4096 GiB per device (16 TiB per node).",
+            "ConstraintDescription": "No more than 1000 GiB per device (4 TiB per node).",
             "Default": "0",
             "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
-            "MaxValue": "4096",
+            "MaxValue": "1000",
             "MinValue": "0",
             "Type": "Number"
         },
@@ -399,10 +399,10 @@
             "Type": "String"
         },
         "ZookeeperNodeStorage": {
-            "ConstraintDescription": "No more than 4096 GiB per device (16 TiB per node).",
+            "ConstraintDescription": "No more than 1000 GiB per device (4 TiB per node).",
             "Default": "0",
             "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
-            "MaxValue": "4096",
+            "MaxValue": "1000",
             "MinValue": "0",
             "Type": "Number"
         }
