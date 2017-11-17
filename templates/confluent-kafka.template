@@ -86,7 +86,7 @@
                     "default": "Allocate a public IP for each instance"
                 },
                 "BootDiskSize": {
-                    "default": "Boot Disk Capacity (GiB)"
+                    "default": "Boot Disk Capacity (GB)"
                 },
                 "BrokerNodeInstanceType": {
                     "default": "Instance Type"
@@ -216,10 +216,10 @@
             "Type": "String"
         },
         "BrokerNodeStorage": {
-            "ConstraintDescription": "No more than 4096 GiB per device (16 TiB per node). Be Careful About Exceeding your AWS Storage Limit.",
+            "ConstraintDescription": "No more than 4096 GB per device (16 TB per node). Be Careful About Exceeding your AWS Storage Limit.",
             "Default": "512",
-            "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
-            "MaxValue": "4096",
+            "Description": "Allocated EBS storage for each block device (in GB; 4 devs per node); 0 indicates ephemeral storage only",
+            "MaxValue": "4000",
             "MinValue": "0",
             "Type": "Number"
         },
@@ -370,9 +370,9 @@
             "Type": "String"
         },
         "WorkerNodeStorage": {
-            "ConstraintDescription": "No more than 1000 GiB per device (4 TiB per node).",
+            "ConstraintDescription": "No more than 1000 GB per device (4 TB per node).",
             "Default": "0",
-            "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
+            "Description": "Allocated EBS storage for each block device (in GB; 4 devs per node); 0 indicates ephemeral storage only",
             "MaxValue": "1000",
             "MinValue": "0",
             "Type": "Number"
@@ -399,9 +399,9 @@
             "Type": "String"
         },
         "ZookeeperNodeStorage": {
-            "ConstraintDescription": "No more than 1000 GiB per device (4 TiB per node).",
+            "ConstraintDescription": "No more than 1000 GB per device (4 TB per node).",
             "Default": "0",
-            "Description": "Allocated EBS storage for each block device (in GiB; 4 devs per node); 0 indicates ephemeral storage only",
+            "Description": "Allocated EBS storage for each block device (in GB; 4 devs per node); 0 indicates ephemeral storage only",
             "MaxValue": "1000",
             "MinValue": "0",
             "Type": "Number"
