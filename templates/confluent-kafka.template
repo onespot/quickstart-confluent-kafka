@@ -216,7 +216,7 @@
             "Type": "String"
         },
         "BrokerNodeStorage": {
-            "ConstraintDescription": "No more than 4096 GB per device (16 TB per node). Be Careful About Exceeding your AWS Storage Limit.",
+            "ConstraintDescription": "No more than 4000 GB per device (16 TB per node). Be Careful About Exceeding your AWS Storage Limit.",
             "Default": "512",
             "Description": "Allocated EBS storage for each block device (in GB; 4 devs per node); 0 indicates ephemeral storage only",
             "MaxValue": "4000",

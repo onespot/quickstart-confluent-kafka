@@ -138,10 +138,10 @@
             "Type": "String"
         },
         "PersistentStorage": {
-            "ConstraintDescription": "No more than 4096 GB per device (16 TB per node).",
+            "ConstraintDescription": "No more than 4000 GB per device (16 TB per node).",
             "Default": "0",
             "Description": "Allocated EBS storage for each block device (in GB; 4 devs per node); 0 indicates ephemeral storage only",
-            "MaxValue": "4096",
+            "MaxValue": "4000",
             "MinValue": "0",
             "Type": "Number"
         },
