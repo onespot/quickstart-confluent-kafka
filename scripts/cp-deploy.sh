@@ -519,7 +519,7 @@ configure_workers() {
 			KC_PLUGIN_DIR=/usr/share/java/kc-plugins
 			KC_PLUGIN_PATH=/usr/share/java,$KC_PLUGIN_DIR
 		fi
-        mkdir -p $KC_PLUGIN_DIR
+		mkdir -p $KC_PLUGIN_DIR
 	fi
 
 	if [ -f $KAFKA_CONNECT_CFG ] ; then
