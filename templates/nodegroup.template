@@ -21,6 +21,10 @@
             "Description": "API Key required to authenticate with Datadog.",
             "Type": "String"
         },
+        "DatadogEnabled": {
+            "Description": "Should the datadog agent be enabled",
+            "Type": "String"
+        },
         "ConsulVersion": {
             "Default": "0.8.1",
             "Description": "Version of Consul to deploy",
@@ -143,9 +147,17 @@
                 "m4.xlarge",
                 "m4.2xlarge",
                 "m4.4xlarge",
+                "m5.large",
+                "m5.xlarge",
+                "m5.2xlarge",
+                "m5.4xlarge",
                 "c3.xlarge",
                 "c3.2xlarge",
                 "c3.4xlarge",
+                "c5.large",
+                "c5.xlarge",
+                "c5.2xlarge",
+                "c5.4xlarge",
                 "d2.xlarge",
                 "d2.2xlarge",
                 "d2.4xlarge",
@@ -320,6 +332,14 @@
         }
     },
     "Conditions": {
+        "DatadogEnabled": {
+            "Fn::Equals": [
+                {
+                    "Ref": "DatadogEnabled"
+                },
+                "True"
+            ]
+        },
         "BrokerNode": {
             "Fn::Equals": [
                 {
@@ -431,25 +451,97 @@
                     }
                 },
                 "AWS::CloudFormation::Init": {
-                    "config": {
-                        "sources" : {
-                            "/home/ubuntu" : "http://aws-cloudwatch.s3.amazonaws.com/downloads/CloudWatchMonitoringScripts-1.2.1.zip",
-                            "/etc/consul.d" : {
-                                "Fn::Sub": "https://${ConsulQSS3BucketName}.s3.amazonaws.com/${ConsulQSS3KeyPrefix}ClientConfig.tar.gz"
+                    "configSets": {
+                        "full_install" : [
+                            "install_cfn",
+                            "install_inspector",
+                            "install_ssh_login",
+                            "install_consul",
+                            "config",
+                            "monitoring_cloudwatch",
+                            "monitoring_datadog"
+                        ],
+                        "full_upgrade" : [
+                            "monitoring_cloudwatch",
+                            "monitoring_datadog"
+                        ]
+                    },
+                    "install_cfn": {
+                        "files": {
+                            "/etc/cfn/cfn-hup.conf" : {
+                                "content" : { "Fn::Join" : ["", [
+                                    "[main]\n",
+                                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                                    "region=", { "Ref" : "AWS::Region" }, "\n"
+                                ]]},
+                                "mode"    : "000400",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                                "content": { "Fn::Join" : ["", [
+                                    "[cfn-auto-reloader-hook]\n",
+                                    "triggers=post.update\n",
+                                    "path=Resources.NodeLaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                                    "action=/opt/aws/bin/cfn-init -v ",
+                                    "         --stack ", { "Ref" : "AWS::StackName" },
+                                    "         --resource NodeLaunchConfig ",
+                                    "         --configsets full_upgrade ",
+                                    "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                                    "runas=root\n"
+                                ]]}
                             }
                         },
                         "commands": {
-                            "a-install": {
-                                "command": {
-                                    "Fn::Sub": "./install.sh -a \"${AssumeRole}\" -i \"${AuthorizedIamGroups}\" -s \"${AuthorizedSudoerGroups}\""
-                                },
-                                "cwd": "/opt/aws-ec2-ssh"
+                            "01-ln-init": {
+                                "command": "ln -s /usr/local/lib/python2.7/dist-packages/aws_cfn_bootstrap-1.4-py2.7.egg/init/ubuntu/cfn-hup /etc/init.d/cfn-hup"
                             },
-                            "b-consul-services": {
-                                "command" : "/tmp/sbin/confluent_services.sh > /var/log/confluent_services.log"
+                            "02-make-executable": {
+                                "command": "chmod 700 /etc/init.d/cfn-hup"
                             },
-                            "c-datadog_checks": {
-                                "command" : "/tmp/sbin/enable_datadog_checks.sh > /var/log/datadog_checks.log"
+                            "03-enable-runlevels": {
+                                "command": "update-rc.d cfn-hup defaults"
+                            }
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "cfn-hup": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true",
+                                    "files": [
+                                        "/etc/cfn/cfn-hup.conf",
+                                        "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "install_inspector": {
+                        "files": {
+                            "/tmp/install_inspector": {
+                                "source": "https://d1wk0tztpsntt1.cloudfront.net/linux/latest/install",
+                                "mode": "00500"
+                            }
+                        },
+                        "commands": {
+                            "01-install-inspector": {
+                                "command" : "/tmp/install_inspector"
+                            }
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "awsagent": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true"
+                                }
+                            }
+                        }
+                    },
+                    "install_ssh_login" : {
+                        "packages": {
+                            "apt" : {
+                                "jq" : [],
+                                "git" : []
                             }
                         },
                         "files": {
@@ -458,7 +550,36 @@
                                 "mode": "000550",
                                 "owner": "root",
                                 "group": "root"
-                            },
+                            }
+                        },
+                        "commands": {
+                            "a-install": {
+                                "command": {
+                                    "Fn::Sub": "./install.sh -a \"${AssumeRole}\" -i \"${AuthorizedIamGroups}\" -s \"${AuthorizedSudoerGroups}\""
+                                },
+                                "cwd": "/opt/aws-ec2-ssh"
+                            }
+                        }
+                    },
+                    "install_consul" : {
+                        "packages": {
+                            "apt": {
+                                "libwww-perl" : [],
+                                "libdatetime-perl" : [],
+                                "unzip" : []
+                            }
+                        },
+                        "sources" : {
+                            "/etc/consul.d" : {
+                                "Fn::Sub": "https://${ConsulQSS3BucketName}.s3.amazonaws.com/${ConsulQSS3KeyPrefix}ClientConfig.tar.gz"
+                            }
+                        },
+                        "commands": {
+                            "01-consul-services": {
+                                "command" : "/tmp/sbin/confluent_services.sh > /var/log/confluent_services.log"
+                            }
+                        },
+                        "files": {
                             "/tmp/consul_client_bootstrap.sh": {
                                 "source": {
                                     "Fn::Sub": "https://${ConsulQSS3BucketName}.s3.amazonaws.com/${ConsulQSS3KeyPrefix}scripts/consul_client_bootstrap.sh"
@@ -487,6 +608,43 @@
                                     "esac\n"
                                 ]]},
                                 "mode": "000700"
+                            }
+                        }
+                    },
+                    "monitoring_cloudwatch" : {
+                        "sources" : {
+                            "/home/ubuntu" : "http://aws-cloudwatch.s3.amazonaws.com/downloads/CloudWatchMonitoringScripts-1.2.1.zip"
+                        },
+                        "files" : {
+                            "/var/spool/cron/crontabs/ubuntu" : {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "*/5 * * * * ~/aws-scripts-mon/mon-put-instance-data.pl --mem-util --from-cron",
+                                            "\n"
+                                        ]
+                                    ]
+                                },
+                                "group": "crontab",
+                                "mode": "000600",
+                                "owner": "ubuntu"
+                            }
+                        }
+                    },
+                    "monitoring_datadog": {
+                        "packages": {
+                            "apt": {
+                                "apt-utils": []
+                            }
+                        },
+                        "files": {
+                            "/tmp/datadog/install_agent.sh": {
+                                "source": "https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh",
+                                "mode": "00700"
+                            },
+                            "/etc/sysconfig/datadog-agent": {
+                                "content" : "export DD_PROCESS_AGENT_ENABLED=true"
                             },
                             "/etc/dd-agent/conf.d/http_check.yaml.example": {
                                 "source": {
@@ -515,32 +673,6 @@
                                 ]]},
                                 "mode": "000700"
                             },
-                            "/var/spool/cron/crontabs/ubuntu" : {
-                                "content": {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            "*/5 * * * * ~/aws-scripts-mon/mon-put-instance-data.pl --mem-util --from-cron",
-                                            "\n"
-                                        ]
-                                    ]
-                                },
-                                "group": "crontab",
-                                "mode": "000600",
-                                "owner": "ubuntu"
-                            },
-                            "/etc/dd-agent/datadog.conf" : {
-                                "content" : { "Fn::Join" : ["", [
-                                    "[Main]\n",
-                                    "\n",
-                                    "dd_url: https://app.datadoghq.com\n",
-                                    "api_key:", { "Ref" : "DatadogApiKey" }, "\n",
-                                    "collect_ec2_tags: yes\n"
-                                ]]},
-                                "group": "dd-agent",
-                                "mode": "000644",
-                                "owner": "dd-agent"
-                            },
                             "/etc/dd-agent/conf.d/consul.yaml": {
                                 "content" : { "Fn::Join" : ["", [
                                     "init_config:\n",
@@ -556,7 +688,41 @@
                                     "     network_latency_checks: yes\n",
                                     "\n"
                                 ]]}
+                            }
+                        },
+                        "commands" : {
+                            "01-install-datadog" : {
+                                "command": { "Fn::Join" : ["", [
+                                    "DD_API_KEY=", { "Ref" : "DatadogApiKey" },
+                                    " DD_INSTALL_ONLY=true",
+                                    " bash -c /tmp/datadog/install_agent.sh"
+                                ]]}
                             },
+                            "02-datadog_checks": {
+                                "command" : "/tmp/sbin/enable_datadog_checks.sh > /var/log/datadog_checks.log"
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "datadog-agent" : {
+                                    "enabled" : { "Ref" : "DatadogEnabled" },
+                                    "ensureRunning" : { "Ref" : "DatadogEnabled" },
+                                    "files" : { "Fn::If" : [
+                                        "DatadogEnabled",
+                                        [
+                                            "/etc/sysconfig/datadog-agent",
+                                            "/etc/dd-agent/conf.d/kafka.yaml",
+                                            "/etc/dd-agent/conf.d/kafka_consumer.yaml",
+                                            "/etc/dd-agent/conf.d/zk.yaml"
+                                        ],
+                                        []
+                                    ]}
+                                }
+                            }
+                        }
+                    },
+                    "config": {
+                        "files": {
                             "/tmp/sbin/compute-heap-opts": {
                                 "source": {
                                     "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}scripts/compute-heap-opts"
@@ -654,30 +820,6 @@
                                 "owner": "root",
                                 "group": "root",
                                 "authentication": "S3AccessCreds"
-                            }
-                        },
-                        "packages" : {
-                            "apt" : {
-                                "jq" : [],
-                                "git" : [],
-                                "datadog-agent" : [],
-                                "libwww-perl" : [],
-                                "libdatetime-perl" : [],
-                                "unzip" : []
-                            }
-                        },
-                        "services" : {
-                            "sysvinit" : {
-                                "datadog-agent" : {
-                                    "enabled" : "true",
-                                    "ensureRunning" : "true",
-                                    "files" : [
-                                        "/etc/dd-agent/datadog.conf",
-                                        "/etc/dd-agent/conf.d/kafka.yaml",
-                                        "/etc/dd-agent/conf.d/kafka_consumer.yaml",
-                                        "/etc/dd-agent/conf.d/zk.yaml"],
-                                    "packages" : { "apt" : ["datadog-agent"] }
-                                }
                             }
                         }
                     }
@@ -949,13 +1091,6 @@
                                 },
                                 " --resource Nodes\n",
                                 "\n",
-                                "## Install Datadog Agent on the node\n",
-                                "DD_API_KEY=",
-                                {
-                                    "Ref": "DatadogApiKey"
-                                },
-                                " bash -c \"$(curl -L https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh)\"",
-                                "\n",
                                 "## Save off other cluster details in prep for configuration\n",
                                 "echo ",
                                 {
@@ -992,6 +1127,7 @@
                                     "Ref": "AWS::StackName"
                                 },
                                 "         --resource NodeLaunchConfig ",
+                                "         --configsets full_install ",
                                 "         --region ",
                                 {
                                     "Ref": "AWS::Region"

@@ -186,6 +186,10 @@
             "Description": "API Key required to authenticate with Datadog.",
             "Type": "String"
         },
+        "DatadogEnabled": {
+            "Description": "Should the datadog agent be enabled",
+            "Type": "String"
+        },
         "ConsulVersion": {
             "Default": "0.8.1",
             "Description": "Version of Consul to deploy",
@@ -235,6 +239,10 @@
                 "m4.xlarge",
                 "m4.2xlarge",
                 "m4.4xlarge",
+                "m5.large",
+                "m5.xlarge",
+                "m5.2xlarge",
+                "m5.4xlarge",
                 "c3.xlarge",
                 "c3.2xlarge",
                 "c3.4xlarge",
@@ -384,11 +392,16 @@
         },
         "WorkerNodeInstanceType": {
             "AllowedValues": [
+                "m3.medium",
                 "m3.large",
                 "m3.xlarge",
                 "m4.xlarge",
                 "m4.2xlarge",
                 "m4.4xlarge",
+                "m5.large",
+                "m5.xlarge",
+                "m5.2xlarge",
+                "m5.4xlarge",
                 "c3.xlarge",
                 "c3.2xlarge",
                 "c3.4xlarge",
@@ -428,7 +441,10 @@
                 "m3.xlarge",
                 "m4.large",
                 "m4.xlarge",
-                "m4.2xlarge"
+                "m4.2xlarge",
+                "m5.large",
+                "m5.xlarge",
+                "m5.2xlarge"
             ],
             "ConstraintDescription": "Must be a valid EC2 instance type.",
             "Default": "m4.large",
@@ -739,6 +755,9 @@
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
                     },
+                    "DatadogEnabled": {
+                        "Ref": "DatadogEnabled"
+                    },
                     "ConsulVersion": {
                         "Ref": "ConsulVersion"
                     },
@@ -840,6 +859,9 @@
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
                     },
+                    "DatadogEnabled": {
+                        "Ref": "DatadogEnabled"
+                    },
                     "ConsulVersion": {
                         "Ref": "ConsulVersion"
                     },
@@ -940,6 +962,9 @@
                     },
                     "DatadogApiKey": {
                         "Ref": "DatadogApiKey"
+                    },
+                    "DatadogEnabled": {
+                        "Ref": "DatadogEnabled"
                     },
                     "ConsulVersion": {
                         "Ref": "ConsulVersion"
@@ -1058,6 +1083,14 @@
                         "IpProtocol": "udp",
                         "FromPort": "8301",
                         "ToPort": "8302",
+                        "CidrIp": {
+                            "Ref": "RemoteAccessCIDR"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "9999",
+                        "ToPort": "9999",
                         "CidrIp": {
                             "Ref": "RemoteAccessCIDR"
                         }
@@ -1376,6 +1409,30 @@
             },
             "Export": {
                 "Name" : {"Fn::Sub": "${AWS::StackName}-BrokerNodes" }
+            }
+        },
+        "WorkerNodes": {
+            "Description": "",
+            "Value": {
+                "Fn::GetAtt": [
+                    "WorkerStack",
+                    "Outputs.Nodes"
+                ]
+            },
+            "Export": {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-WorkerNodes" }
+            }
+        },
+        "ZookeeperNodes": {
+            "Description": "",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ZookeeperStack",
+                    "Outputs.Nodes"
+                ]
+            },
+            "Export": {
+                "Name" : {"Fn::Sub": "${AWS::StackName}-ZookeeperNodes" }
             }
         },
         "ClusterInfo": {

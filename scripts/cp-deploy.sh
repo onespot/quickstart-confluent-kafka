@@ -298,16 +298,29 @@ configure_kafka_broker() {
 		bidx=$[bidx+1]
 	done
 
+	# Forcing protocol for upgrade (rick.bolkey)
+	set_property $BROKER_CFG "inter.broker.protocol.version" "1.0"
+	set_property $BROKER_CFG "log.message.format.version" "1.0"
+
+    # Increasing replication factors
+	local replicationFactor=$numBrokers
+	[ $replicationFactor -gt 3 ] && replicationFactor=3
+	set_property $BROKER_CFG "num.partitions" $replicationFactor
+	set_property $BROKER_CFG "offsets.topic.replication.factor" $replicationFactor
+	set_property $BROKER_CFG "transaction.state.log.replication.factor" $replicationFactor
+	set_property $BROKER_CFG "transaction.state.log.min.isr" 2
+
 		# Choose between explicit setting of broker.id or auto-generation
 		# As of 3.1.2, ConfluentMetricsReporter class did not properly
 		# report broker metrics when auto-generation was enabled.
 
-	if [ $myid -ge 0 ] ; then
-		set_property $BROKER_CFG "broker.id" "$myid"
-	else
+    # Forcing broker id generation (rick.bolkey)
+#	if [ $myid -ge 0 ] ; then
+#		set_property $BROKER_CFG "broker.id" "$myid"
+#	else
 		sed -i "s/^broker\.id=.*$/# broker\.id=$myid/" $BROKER_CFG
 		sed -i "s/^broker\.id\.generation\.enabled=false/broker\.id\.generation\.enabled=true/" $BROKER_CFG
-	fi
+#	fi
 
 		# Set target zookeeper quorum and VERY LONG timeout (5 minutes)
 		# (since we don't know how long before other nodes will come on line)
