@@ -184,7 +184,7 @@ install_os_tools() {
 			# only install if we absolutely have to.
 		which pip &> /dev/null
         [ $? -ne 0 ] && yum install -y python-pip
-		pip install --upgrade pip
+		pip install --upgrade pip==9.0.3
 	fi
 
 		# Add the python pip "requests" package to all instances 
