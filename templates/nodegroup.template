@@ -655,6 +655,15 @@
                                 "group": "root",
                                 "authentication": "S3AccessCreds"
                             },
+                            "/etc/dd-agent/conf.d/kafka_consumer.yaml.example": {
+                                "source": {
+                                    "Fn::Sub": "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}files/broker_kafka_consumer.yaml"
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root",
+                                "authentication": "S3AccessCreds"
+                            },
                             "/tmp/sbin/enable_datadog_checks.sh" : {
                                 "content": { "Fn::Join" : ["", [
                                     "#!/bin/bash\n",
@@ -662,6 +671,7 @@
                                     "case '", { "Ref" : "NodeDesignation" }, "' in\n",
                                     "    broker)\n",
                                     "        cp /etc/dd-agent/conf.d/kafka.yaml.example /etc/dd-agent/conf.d/kafka.yaml\n",
+                                    "        cp /etc/dd-agent/conf.d/kafka_consumer.yaml.example /etc/dd-agent/conf.d/kafka_consumer.yaml\n",
                                     "        ;;\n",
                                     "    worker)\n",
                                     "        cp /etc/dd-agent/conf.d/http_check.yaml.example /etc/dd-agent/conf.d/http_check.yaml\n",
