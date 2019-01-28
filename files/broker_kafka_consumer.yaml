@@ -1,0 +1,21 @@
+init_config:
+
+instances:
+
+  - kafka_connect_str:
+      - localhost:9092
+    kafka_consumer_offsets: true
+    consumer_groups:
+      tracking-content-indexer:
+        discovered_content_with_deletes_by_url: []
+        bulk_scrape_pages_by_url: []
+      tracking-sitemap-change-monitor:
+        discovered_content_by_url: []
+      tracking-content-discovery-kstream:
+        snowplow_good_events_by_client_ip: []
+      static-rec-generator:
+        rec_unit_config_by_unit_id: []
+        rec_unit_config_with_static_recommendations_by_unit_id: []
+        static_recommendation_requests_by_unit_id: []
+      snowplow-stream-metrics-v0.10.0:
+        snowplow_good_events_by_client_ip: []
